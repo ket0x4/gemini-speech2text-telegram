@@ -38,28 +38,53 @@ export async function handleVoiceMessage(ctx: MediaContext): Promise<void> {
     }
 
     const buffer = await downloadTelegramFile(config.bot_token, file.file_path);
-    const transcript = await transcriptionQueue.enqueue(() => transcribeAudio(buffer, mimeType));
+    const result = await transcriptionQueue.enqueue(() => transcribeAudio(buffer, mimeType));
+    const textToDeliver = result.text;
 
     console.log(
-      `[Media] Completed transcription for chat ${ctx.chat.id} (${transcript.length} chars)`,
+      `[Media] Completed transcription for chat ${ctx.chat.id} (${textToDeliver.length} chars, multiSpeaker: ${result.isMultiSpeaker})`,
     );
 
-    if (!transcript) {
+    if (!textToDeliver) {
       await ctx.reply("No speech detected.", {
         reply_parameters: { message_id: ctx.message.message_id },
       });
       return;
     }
 
-    if (transcript.length <= TELEGRAM_MAX_MESSAGE_LENGTH) {
-      await ctx.reply(transcript, {
-        reply_parameters: { message_id: ctx.message.message_id },
-      });
+    if (result.isMultiSpeaker && result.htmlFormattedText) {
+      if (result.htmlFormattedText.length <= TELEGRAM_MAX_MESSAGE_LENGTH) {
+        try {
+          await ctx.reply(result.htmlFormattedText, {
+            parse_mode: "HTML",
+            reply_parameters: { message_id: ctx.message.message_id },
+          });
+        } catch (htmlError) {
+          console.warn(
+            "[Media] HTML formatting reply failed, falling back to plain text:",
+            htmlError,
+          );
+          await ctx.reply(result.text, {
+            reply_parameters: { message_id: ctx.message.message_id },
+          });
+        }
+      } else {
+        const document = new InputFile(Buffer.from(result.text, "utf-8"), "transcript.txt");
+        await ctx.replyWithDocument(document, {
+          reply_parameters: { message_id: ctx.message.message_id },
+        });
+      }
     } else {
-      const document = new InputFile(Buffer.from(transcript, "utf-8"), "transcript.txt");
-      await ctx.replyWithDocument(document, {
-        reply_parameters: { message_id: ctx.message.message_id },
-      });
+      if (textToDeliver.length <= TELEGRAM_MAX_MESSAGE_LENGTH) {
+        await ctx.reply(textToDeliver, {
+          reply_parameters: { message_id: ctx.message.message_id },
+        });
+      } else {
+        const document = new InputFile(Buffer.from(textToDeliver, "utf-8"), "transcript.txt");
+        await ctx.replyWithDocument(document, {
+          reply_parameters: { message_id: ctx.message.message_id },
+        });
+      }
     }
   } catch (error) {
     console.error("Transcription error:", error);

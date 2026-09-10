@@ -4,9 +4,16 @@ export interface BotConfig {
   model: string;
   admin_user_ids: number[];
   allowed_chat_ids: number[];
+  enable_diarization?: boolean;
 }
 
 export interface AudioFileData {
   buffer: Buffer;
   mimeType: string;
+}
+
+export interface TranscriptionResult {
+  text: string;
+  isMultiSpeaker: boolean;
+  htmlFormattedText?: string;
 }

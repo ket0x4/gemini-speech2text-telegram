@@ -11,6 +11,7 @@ const DEFAULT_CONFIG: BotConfig = {
   model: "gemini-3.5-transcribe",
   admin_user_ids: [],
   allowed_chat_ids: [],
+  enable_diarization: true,
 };
 
 let currentConfig: BotConfig | null = null;
@@ -35,6 +36,11 @@ export function loadConfig(configPath: string = CONFIG_PATH): BotConfig {
         .map((id) => Number.parseInt(id.trim(), 10))
         .filter((id) => !Number.isNaN(id))
     : undefined;
+  const envEnableDiarization =
+    process.env.ENABLE_DIARIZATION !== undefined
+      ? process.env.ENABLE_DIARIZATION.toLowerCase() === "true" ||
+        process.env.ENABLE_DIARIZATION === "1"
+      : undefined;
 
   const mergedConfig: BotConfig = {
     bot_token: envBotToken || fileConfig.bot_token || DEFAULT_CONFIG.bot_token,
@@ -49,6 +55,12 @@ export function loadConfig(configPath: string = CONFIG_PATH): BotConfig {
     allowed_chat_ids: Array.isArray(fileConfig.allowed_chat_ids)
       ? fileConfig.allowed_chat_ids
       : DEFAULT_CONFIG.allowed_chat_ids,
+    enable_diarization:
+      envEnableDiarization !== undefined
+        ? envEnableDiarization
+        : fileConfig.enable_diarization !== undefined
+          ? fileConfig.enable_diarization
+          : DEFAULT_CONFIG.enable_diarization,
   };
 
   currentConfig = mergedConfig;

@@ -1,6 +1,7 @@
 import { type Context, type Filter, InputFile } from "grammy";
 import { getConfig } from "../config.js";
 import { transcribeAudio } from "../services/gemini.js";
+import { transcriptionQueue } from "../services/queue.js";
 import { downloadTelegramFile } from "../services/telegram.js";
 
 const TELEGRAM_MAX_MESSAGE_LENGTH = 4096;
@@ -24,6 +25,10 @@ export async function handleVoiceMessage(ctx: MediaContext): Promise<void> {
 
   await ctx.replyWithChatAction("typing");
 
+  const typingInterval = setInterval(() => {
+    ctx.replyWithChatAction("typing").catch(() => {});
+  }, 4000);
+
   try {
     const config = getConfig();
     const file = await ctx.api.getFile(fileId);
@@ -33,7 +38,7 @@ export async function handleVoiceMessage(ctx: MediaContext): Promise<void> {
     }
 
     const buffer = await downloadTelegramFile(config.bot_token, file.file_path);
-    const transcript = await transcribeAudio(buffer, mimeType);
+    const transcript = await transcriptionQueue.enqueue(() => transcribeAudio(buffer, mimeType));
 
     console.log(
       `[Media] Completed transcription for chat ${ctx.chat.id} (${transcript.length} chars)`,
@@ -61,5 +66,7 @@ export async function handleVoiceMessage(ctx: MediaContext): Promise<void> {
     await ctx.reply("Failed to transcribe audio.", {
       reply_parameters: { message_id: ctx.message.message_id },
     });
+  } finally {
+    clearInterval(typingInterval);
   }
 }

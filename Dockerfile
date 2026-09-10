@@ -12,7 +12,7 @@ COPY src ./src
 RUN bun build src/index.ts --target bun --outfile dist/index.js --minify
 
 # Stage 2: Runtime
-FROM oven/bun:1-alpine AS runner
+FROM oven/bun:latest AS runner
 
 WORKDIR /app
 

@@ -18,6 +18,10 @@ export async function handleVoiceMessage(ctx: MediaContext): Promise<void> {
 
   const mimeType = voice ? (voice.mime_type ?? "audio/ogg") : "video/mp4";
 
+  console.log(
+    `[Media] Received ${voice ? "voice message" : "video note"} from chat ${ctx.chat.id} (user ${ctx.from?.id})`,
+  );
+
   await ctx.replyWithChatAction("typing");
 
   try {
@@ -30,6 +34,10 @@ export async function handleVoiceMessage(ctx: MediaContext): Promise<void> {
 
     const buffer = await downloadTelegramFile(config.bot_token, file.file_path);
     const transcript = await transcribeAudio(buffer, mimeType);
+
+    console.log(
+      `[Media] Completed transcription for chat ${ctx.chat.id} (${transcript.length} chars)`,
+    );
 
     if (!transcript) {
       await ctx.reply("No speech detected.", {

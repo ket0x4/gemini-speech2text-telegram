@@ -20,4 +20,8 @@ export async function allowlistMiddleware(ctx: Context, next: NextFunction): Pro
     await next();
     return;
   }
+
+  console.log(
+    `[Allowlist] Ignored update from unauthorized chat ID: ${chat.id} (type: ${chat.type}, user: ${userId})`,
+  );
 }

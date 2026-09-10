@@ -1,0 +1,7 @@
+{
+  "bot_token": "",
+  "gemini_api_key": "",
+  "model": "gemini-3.5-transcribe",
+  "admin_user_ids": [],
+  "allowed_chat_ids": []
+}

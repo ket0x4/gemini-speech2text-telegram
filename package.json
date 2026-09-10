@@ -1,0 +1,25 @@
+{
+  "name": "telegram-s2t-bot",
+  "version": "1.0.0",
+  "description": "Speech-to-text Telegram bot powered by Google Gemini API",
+  "module": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@google/genai": "^2.21.0",
+    "grammy": "^1.46.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "latest",
+    "typescript": "^5.7.3"
+  }
+}

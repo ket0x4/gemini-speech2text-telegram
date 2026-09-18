@@ -37,8 +37,15 @@ export async function handleVoiceMessage(ctx: MediaContext): Promise<void> {
       throw new Error("Telegram did not return a file path.");
     }
 
+    const chatIdStr = ctx.chat.id.toString();
+    const chatLangCodes = config.chat_languages?.[chatIdStr];
+    const languageCodes =
+      chatLangCodes !== undefined ? chatLangCodes : (config.default_language_codes ?? []);
+
     const buffer = await downloadTelegramFile(config.bot_token, file.file_path);
-    const result = await transcriptionQueue.enqueue(() => transcribeAudio(buffer, mimeType));
+    const result = await transcriptionQueue.enqueue(() =>
+      transcribeAudio(buffer, mimeType, languageCodes),
+    );
     const textToDeliver = result.text;
 
     console.log(

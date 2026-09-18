@@ -5,6 +5,8 @@ export interface BotConfig {
   admin_user_ids: number[];
   allowed_chat_ids: number[];
   enable_diarization?: boolean;
+  default_language_codes?: string[];
+  chat_languages?: Record<string, string[]>;
 }
 
 export interface AudioFileData {

@@ -12,6 +12,8 @@ const DEFAULT_CONFIG: BotConfig = {
   admin_user_ids: [],
   allowed_chat_ids: [],
   enable_diarization: true,
+  default_language_codes: [],
+  chat_languages: {},
 };
 
 let currentConfig: BotConfig | null = null;
@@ -41,6 +43,11 @@ export function loadConfig(configPath: string = CONFIG_PATH): BotConfig {
       ? process.env.ENABLE_DIARIZATION.toLowerCase() === "true" ||
         process.env.ENABLE_DIARIZATION === "1"
       : undefined;
+  const envDefaultLanguageCodes = process.env.DEFAULT_LANGUAGE_CODES
+    ? process.env.DEFAULT_LANGUAGE_CODES.split(",")
+        .map((code) => code.trim())
+        .filter((code) => code.length > 0)
+    : undefined;
 
   const mergedConfig: BotConfig = {
     bot_token: envBotToken || fileConfig.bot_token || DEFAULT_CONFIG.bot_token,
@@ -61,6 +68,16 @@ export function loadConfig(configPath: string = CONFIG_PATH): BotConfig {
         : fileConfig.enable_diarization !== undefined
           ? fileConfig.enable_diarization
           : DEFAULT_CONFIG.enable_diarization,
+    default_language_codes:
+      envDefaultLanguageCodes !== undefined
+        ? envDefaultLanguageCodes
+        : Array.isArray(fileConfig.default_language_codes)
+          ? fileConfig.default_language_codes
+          : DEFAULT_CONFIG.default_language_codes,
+    chat_languages:
+      typeof fileConfig.chat_languages === "object" && fileConfig.chat_languages !== null
+        ? fileConfig.chat_languages
+        : DEFAULT_CONFIG.chat_languages,
   };
 
   currentConfig = mergedConfig;

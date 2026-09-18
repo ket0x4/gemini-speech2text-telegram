@@ -35,7 +35,9 @@ Configure the bot using `config.json` or corresponding environment variables.
   "model": "gemini-3.5-transcribe",
   "admin_user_ids": [123456789],
   "allowed_chat_ids": [],
-  "enable_diarization": true
+  "enable_diarization": true,
+  "default_language_codes": [],
+  "chat_languages": {}
 }
 ```
 
@@ -47,6 +49,8 @@ Configure the bot using `config.json` or corresponding environment variables.
 - `admin_user_ids`: Array of Telegram user IDs permitted to execute administrative commands (`/allow`, `/disallow`, `/chats`). Can also be set as comma-separated integers via `ADMIN_USER_IDS`.
 - `allowed_chat_ids`: Array of Telegram chat IDs permitted to use the bot. Updated automatically when admins run `/allow` or `/disallow`.
 - `enable_diarization`: Boolean flag to enable speaker diarization for multi-person speech (default: `true`). Can also be set via `ENABLE_DIARIZATION`. When 2 or more speakers are detected, each speaker is labeled with a colored square emoji and bold short tag (`🟥 <b>P1:</b>`, `🟦 <b>P2:</b>`) with paragraph spacing. If only 1 speaker is detected, clean plain text is returned.
+- `default_language_codes`: Optional array of fallback BCP-47 language codes (e.g. `["tr-TR", "en-US"]`). Can also be set via `DEFAULT_LANGUAGE_CODES`. When empty, automatic language detection is used.
+- `chat_languages`: Map of chat IDs to arrays of BCP-47 language codes, updated automatically when `/setlang` is used.
 
 ## Access Control
 
@@ -55,7 +59,21 @@ The bot enforces a whitelist policy:
 - Messages from non-whitelisted chats are silently dropped to avoid leaking bot presence.
 - Users listed in `admin_user_ids` can use administrative commands in any chat or direct message with the bot.
 
-### Admin Commands
+### Commands
+
+#### Language Settings (`/setlang`)
+Configures speech recognition language hints for the current chat:
+- `/setlang`: Displays the current language setting and helpful usage examples.
+- `/setlang tr en`: Sets Turkish with English code-switching support (transcribes Turkish sentences while preserving English technical/daily loan words).
+- `/setlang en es`: Sets English with Spanish code-switching support.
+- `/setlang tr`: Sets Turkish only.
+- `/setlang en`: Sets English only.
+- `/setlang auto` (or `reset`): Resets language setting to automatic detection.
+- `/setlang <chat_id> tr en`: (Admin only) Sets language for a specific chat ID.
+
+Specifying explicit language hints prevents meaningless background noise (coughs, clicks, breathing, room noise) from being hallucinated into random foreign languages, while allowing multi-language code-switching.
+
+#### Admin Commands
 
 - `/allow`: Adds the current chat to the whitelist and persists the change to `config.json`.
 - `/allow <chat_id>`: Adds a specific chat ID to the whitelist.

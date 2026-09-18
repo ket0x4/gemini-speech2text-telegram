@@ -224,6 +224,7 @@ export function formatDiarizedTranscript(
 export async function transcribeAudio(
   buffer: Buffer,
   mimeType: string,
+  languageCodes?: string[],
 ): Promise<TranscriptionResult> {
   const config = getConfig();
   const client = getGeminiClient();
@@ -238,6 +239,21 @@ export async function transcribeAudio(
     const inputType = mimeType.startsWith("video/") ? "video" : "audio";
     const enableDiarization = config.enable_diarization !== false;
 
+    const transcriptionConfig: Record<string, unknown> = {};
+
+    if (enableDiarization) {
+      transcriptionConfig.mode = {
+        type: "verbatim",
+        diarization_mode: "speaker",
+      };
+    }
+
+    if (languageCodes && languageCodes.length > 0) {
+      transcriptionConfig.language_codes = languageCodes;
+    }
+
+    const hasTranscriptionConfig = Object.keys(transcriptionConfig).length > 0;
+
     const interaction = await client.interactions.create({
       model: config.model || "gemini-3.5-transcribe",
       input: [
@@ -247,14 +263,9 @@ export async function transcribeAudio(
           mime_type: audioFile.mimeType || mimeType,
         },
       ],
-      generation_config: enableDiarization
+      generation_config: hasTranscriptionConfig
         ? {
-            transcription_config: {
-              mode: {
-                type: "verbatim",
-                diarization_mode: "speaker",
-              },
-            },
+            transcription_config: transcriptionConfig,
           }
         : undefined,
     });

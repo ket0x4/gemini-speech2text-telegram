@@ -11,7 +11,7 @@ const DEFAULT_CONFIG: BotConfig = {
   model: "gemini-3.5-transcribe",
   admin_user_ids: [],
   allowed_chat_ids: [],
-  enable_diarization: true,
+  enable_diarization: false,
   default_language_codes: [],
   chat_languages: {},
 };

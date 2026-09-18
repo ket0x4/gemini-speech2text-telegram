@@ -35,7 +35,7 @@ Configure the bot using `config.json` or corresponding environment variables.
   "model": "gemini-3.5-transcribe",
   "admin_user_ids": [123456789],
   "allowed_chat_ids": [],
-  "enable_diarization": true,
+  "enable_diarization": false,
   "default_language_codes": [],
   "chat_languages": {}
 }
@@ -48,7 +48,7 @@ Configure the bot using `config.json` or corresponding environment variables.
 - `model`: Gemini model identifier for audio transcription (default: `gemini-3.5-transcribe`). Can also be set via `GEMINI_MODEL`.
 - `admin_user_ids`: Array of Telegram user IDs permitted to execute administrative commands (`/allow`, `/disallow`, `/chats`). Can also be set as comma-separated integers via `ADMIN_USER_IDS`.
 - `allowed_chat_ids`: Array of Telegram chat IDs permitted to use the bot. Updated automatically when admins run `/allow` or `/disallow`.
-- `enable_diarization`: Boolean flag to enable speaker diarization for multi-person speech (default: `true`). Can also be set via `ENABLE_DIARIZATION`. When 2 or more speakers are detected, each speaker is labeled with a colored square emoji and bold short tag (`🟥 <b>P1:</b>`, `🟦 <b>P2:</b>`) with paragraph spacing. If only 1 speaker is detected, clean plain text is returned.
+- `enable_diarization`: Boolean flag to enable speaker diarization for multi-person speech (default: `false`). When `false`, Gemini 3.5's native `smart` transcription mode is used (automatically removes conversational filler words like "um"/"uh", resolves self-corrections, and structures punctuation, numbers, and lists). When `true`, speaker diarization is enabled with colored square emojis (`🟥 <b>P1:</b>`, `🟦 <b>P2:</b>`). Can also be set via `ENABLE_DIARIZATION`.
 - `default_language_codes`: Optional array of fallback BCP-47 language codes (e.g. `["tr-TR", "en-US"]`). Can also be set via `DEFAULT_LANGUAGE_CODES`. When empty, automatic language detection is used.
 - `chat_languages`: Map of chat IDs to arrays of BCP-47 language codes, updated automatically when `/setlang` is used.
 

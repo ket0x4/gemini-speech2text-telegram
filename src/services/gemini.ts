@@ -237,16 +237,16 @@ export async function transcribeAudio(
 
   try {
     const inputType = mimeType.startsWith("video/") ? "video" : "audio";
-    const enableDiarization = config.enable_diarization !== false;
+    const enableDiarization = config.enable_diarization === true;
 
-    const transcriptionConfig: Record<string, unknown> = {};
-
-    if (enableDiarization) {
-      transcriptionConfig.mode = {
-        type: "verbatim",
-        diarization_mode: "speaker",
-      };
-    }
+    const transcriptionConfig: Record<string, unknown> = {
+      mode: enableDiarization
+        ? {
+            type: "verbatim",
+            diarization_mode: "speaker",
+          }
+        : "smart",
+    };
 
     if (languageCodes && languageCodes.length > 0) {
       transcriptionConfig.language_codes = languageCodes;

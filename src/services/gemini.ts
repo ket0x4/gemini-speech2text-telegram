@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { getConfig } from "../config.js";
 import type { TranscriptionResult } from "../types.js";
 
-export const SPEAKER_EMOJIS = ["🟥", "🟦", "🟩", "🟨", "🟪", "🟧"];
+const SPEAKER_EMOJIS = ["🟥", "🟦", "🟩", "🟨", "🟪", "🟧"];
 
 let clientInstance: GoogleGenAI | null = null;
 
@@ -18,7 +18,7 @@ export function escapeHtml(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-export interface WordAnnotation {
+interface WordAnnotation {
   text?: string;
   speaker?: string;
 }
@@ -49,11 +49,6 @@ interface InteractionCandidate {
   content?: {
     parts?: InteractionCandidatePart[];
   };
-}
-
-export interface InteractionLike {
-  steps?: InteractionStep[];
-  candidates?: InteractionCandidate[];
 }
 
 export function extractWordAnnotations(interaction: unknown): WordAnnotation[] {
@@ -221,6 +216,8 @@ export function formatDiarizedTranscript(
   };
 }
 
+export const INLINE_AUDIO_SIZE_LIMIT = 20 * 1024 * 1024; // 20 MB
+
 export async function transcribeAudio(
   buffer: Buffer,
   mimeType: string,
@@ -228,15 +225,20 @@ export async function transcribeAudio(
 ): Promise<TranscriptionResult> {
   const config = getConfig();
   const client = getGeminiClient();
+  const inputType = mimeType.startsWith("video/") ? "video" : "audio";
+  const isInline = buffer.length <= INLINE_AUDIO_SIZE_LIMIT;
 
-  const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
-  const audioFile = await client.files.upload({
-    file: blob,
-    config: { mimeType },
-  });
+  let audioFile: { uri?: string; mimeType?: string; name?: string } | null = null;
+
+  if (!isInline) {
+    const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
+    audioFile = await client.files.upload({
+      file: blob,
+      config: { mimeType },
+    });
+  }
 
   try {
-    const inputType = mimeType.startsWith("video/") ? "video" : "audio";
     const enableDiarization = config.enable_diarization === true;
 
     const transcriptionConfig: Record<string, unknown> = {
@@ -254,15 +256,34 @@ export async function transcribeAudio(
 
     const hasTranscriptionConfig = Object.keys(transcriptionConfig).length > 0;
 
+    const inputItem =
+      inputType === "video"
+        ? isInline
+          ? {
+              type: "video" as const,
+              data: buffer.toString("base64"),
+              mime_type: mimeType,
+            }
+          : {
+              type: "video" as const,
+              uri: audioFile?.uri,
+              mime_type: audioFile?.mimeType || mimeType,
+            }
+        : isInline
+          ? {
+              type: "audio" as const,
+              data: buffer.toString("base64"),
+              mime_type: mimeType,
+            }
+          : {
+              type: "audio" as const,
+              uri: audioFile?.uri,
+              mime_type: audioFile?.mimeType || mimeType,
+            };
+
     const interaction = await client.interactions.create({
       model: config.model || "gemini-3.5-transcribe",
-      input: [
-        {
-          type: inputType,
-          uri: audioFile.uri,
-          mime_type: audioFile.mimeType || mimeType,
-        },
-      ],
+      input: [inputItem],
       generation_config: hasTranscriptionConfig
         ? {
             transcription_config: transcriptionConfig,
@@ -282,7 +303,7 @@ export async function transcribeAudio(
     const words = extractWordAnnotations(interaction);
     return formatDiarizedTranscript(words, rawText);
   } finally {
-    if (audioFile.name) {
+    if (audioFile?.name) {
       try {
         await client.files.delete({ name: audioFile.name });
       } catch {
@@ -290,4 +311,51 @@ export async function transcribeAudio(
       }
     }
   }
+}
+
+async function runFlashPrompt(prompt: string): Promise<string> {
+  const config = getConfig();
+  const client = getGeminiClient();
+  const model = config.flash_model || "gemini-3.5-flash";
+
+  const interaction = await client.interactions.create({
+    model,
+    input: [
+      {
+        type: "text",
+        text: prompt,
+      },
+    ],
+  });
+
+  return (interaction.output_text ?? "").trim();
+}
+
+export async function generateSummary(text: string): Promise<string> {
+  const prompt = [
+    "You are an expert executive assistant.",
+    "Summarize the following audio transcript clearly and concisely using bullet points.",
+    "Highlight the key topics, decisions, and takeaways.",
+    "Detect the language of the transcript and respond in that same language.",
+    "",
+    "Transcript:",
+    text,
+  ].join("\n");
+
+  return runFlashPrompt(prompt);
+}
+
+export async function generateActionItems(text: string): Promise<string> {
+  const prompt = [
+    "You are an expert productivity assistant.",
+    "Extract all action items, tasks, commitments, deadlines, and follow-ups mentioned in the following audio transcript.",
+    "Format each item as a checklist item: '- [ ] <task> (assignee / deadline if mentioned)'.",
+    "If no tasks or action items were mentioned, explicitly say 'No specific action items found.' in the detected language.",
+    "Detect the language of the transcript and respond in that same language.",
+    "",
+    "Transcript:",
+    text,
+  ].join("\n");
+
+  return runFlashPrompt(prompt);
 }

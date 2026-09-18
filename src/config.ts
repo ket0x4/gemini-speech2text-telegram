@@ -9,6 +9,7 @@ const DEFAULT_CONFIG: BotConfig = {
   bot_token: "",
   gemini_api_key: "",
   model: "gemini-3.5-transcribe",
+  flash_model: "gemini-3.5-flash",
   admin_user_ids: [],
   allowed_chat_ids: [],
   enable_diarization: false,
@@ -33,6 +34,7 @@ export function loadConfig(configPath: string = CONFIG_PATH): BotConfig {
   const envBotToken = process.env.TELEGRAM_BOT_TOKEN;
   const envGeminiApiKey = process.env.GEMINI_API_KEY;
   const envModel = process.env.GEMINI_MODEL;
+  const envFlashModel = process.env.GEMINI_FLASH_MODEL;
   const envAdminIds = process.env.ADMIN_USER_IDS
     ? process.env.ADMIN_USER_IDS.split(",")
         .map((id) => Number.parseInt(id.trim(), 10))
@@ -53,6 +55,7 @@ export function loadConfig(configPath: string = CONFIG_PATH): BotConfig {
     bot_token: envBotToken || fileConfig.bot_token || DEFAULT_CONFIG.bot_token,
     gemini_api_key: envGeminiApiKey || fileConfig.gemini_api_key || DEFAULT_CONFIG.gemini_api_key,
     model: envModel || fileConfig.model || DEFAULT_CONFIG.model,
+    flash_model: envFlashModel || fileConfig.flash_model || DEFAULT_CONFIG.flash_model,
     admin_user_ids:
       envAdminIds && envAdminIds.length > 0
         ? envAdminIds

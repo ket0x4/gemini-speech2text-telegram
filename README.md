@@ -1,38 +1,41 @@
 # Telegram Speech-to-Text Bot
 
-Telegram bot that transcribes voice messages and video notes using the Google Gemini API.
+Telegram bot for transcribing voice messages, video notes, and audio files using the Google Gemini API.
 
 ## Requirements
 
-- Bun v1.1 or higher (or Docker)
+- Bun v1.1+ (or Docker)
 - Telegram Bot Token (from @BotFather)
 - Google Gemini API Key
 
-## Installation
+## Quick Start
 
-1. Clone or navigate to the repository directory:
-
-2. Install dependencies:
+1. Install dependencies:
    ```bash
    bun install
    ```
 
-3. Create your `config.json` from the template:
+2. Create configuration file:
    ```bash
    cp config.example.json config.json
    ```
 
+3. Configure `config.json` with your credentials, then start the bot:
+   ```bash
+   bun run dev   # Development (auto-reload)
+   bun run start # Production
+   ```
+
 ## Configuration
 
-Configure the bot using `config.json` or corresponding environment variables.
-
-### config.json
+Settings can be specified in `config.json` or via environment variables:
 
 ```json
 {
   "bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
   "gemini_api_key": "YOUR_GEMINI_API_KEY",
   "model": "gemini-3.5-transcribe",
+  "flash_model": "gemini-3.5-flash",
   "admin_user_ids": [123456789],
   "allowed_chat_ids": [],
   "enable_diarization": false,
@@ -41,113 +44,68 @@ Configure the bot using `config.json` or corresponding environment variables.
 }
 ```
 
-### Configuration Fields
+| Field | Environment Variable | Default | Description |
+|---|---|---|---|
+| `bot_token` | `TELEGRAM_BOT_TOKEN` | `""` | Telegram Bot API token. |
+| `gemini_api_key` | `GEMINI_API_KEY` | `""` | Google Gemini API key. |
+| `model` | `GEMINI_MODEL` | `gemini-3.5-transcribe` | Gemini speech-to-text model. |
+| `flash_model` | `GEMINI_FLASH_MODEL` | `gemini-3.5-flash` | Gemini model used for summarization and action items. |
+| `admin_user_ids` | `ADMIN_USER_IDS` | `[]` | User IDs with access to admin commands. Comma-separated in env. |
+| `allowed_chat_ids` | - | `[]` | Allowed chat IDs. Updated automatically by `/allow` and `/disallow`. |
+| `enable_diarization` | `ENABLE_DIARIZATION` | `false` | When true, labels multiple speakers (P1, P2). When false, applies smart transcription. |
+| `default_language_codes` | `DEFAULT_LANGUAGE_CODES` | `[]` | Fallback BCP-47 language codes (e.g. `tr-TR,en-US`). Defaults to auto-detection. |
+| `chat_languages` | - | `{}` | Per-chat language mappings managed via `/setlang`. |
 
-- `bot_token`: Telegram Bot API token. Can also be set via `TELEGRAM_BOT_TOKEN`.
-- `gemini_api_key`: Google Gemini API key. Can also be set via `GEMINI_API_KEY`.
-- `model`: Gemini model identifier for audio transcription (default: `gemini-3.5-transcribe`). Can also be set via `GEMINI_MODEL`.
-- `admin_user_ids`: Array of Telegram user IDs permitted to execute administrative commands (`/allow`, `/disallow`, `/chats`). Can also be set as comma-separated integers via `ADMIN_USER_IDS`.
-- `allowed_chat_ids`: Array of Telegram chat IDs permitted to use the bot. Updated automatically when admins run `/allow` or `/disallow`.
-- `enable_diarization`: Boolean flag to enable speaker diarization for multi-person speech (default: `false`). When `false`, Gemini 3.5's native `smart` transcription mode is used (automatically removes conversational filler words like "um"/"uh", resolves self-corrections, and structures punctuation, numbers, and lists). When `true`, speaker diarization is enabled with colored square emojis (`🟥 <b>P1:</b>`, `🟦 <b>P2:</b>`). Can also be set via `ENABLE_DIARIZATION`.
-- `default_language_codes`: Optional array of fallback BCP-47 language codes (e.g. `["tr-TR", "en-US"]`). Can also be set via `DEFAULT_LANGUAGE_CODES`. When empty, automatic language detection is used.
-- `chat_languages`: Map of chat IDs to arrays of BCP-47 language codes, updated automatically when `/setlang` is used.
+## Features & Supported Media
 
-## Access Control
+- **Media Formats**: Voice messages (`.ogg`), video notes (`.mp4`), audio files (`.mp3`, `.m4a`, `.wav`, `.aac`, etc.), and audio documents (`.flac`, `.opus`, etc.).
+- **Inline Audio Acceleration**: Files under 20 MB are sent directly via inline Base64, skipping Gemini Files API upload/deletion round-trips for faster response times.
+- **Interactive Action Buttons**: Transcripts include inline buttons for on-demand post-processing:
+  - `Summarize`: Generates a concise bullet-point summary using Gemini Flash.
+  - `Action Items`: Extracts tasks, deadlines, and follow-ups into a checklist using Gemini Flash.
+- **Smart Formatting & Diarization**: Multi-speaker attribution when diarization is enabled, or automatic filler-word cleanup and smart punctuation in standard mode.
+- **Long Transcripts**: Transcripts up to 4,096 characters are sent as text messages; longer transcripts are attached as `transcript.txt`.
 
-The bot enforces a whitelist policy:
-- Only chats whose IDs are listed in `allowed_chat_ids` can interact with the bot.
-- Messages from non-whitelisted chats are silently dropped to avoid leaking bot presence.
-- Users listed in `admin_user_ids` can use administrative commands in any chat or direct message with the bot.
+## Commands
 
-### Commands
+### Access Control
 
-#### Language Settings (`/setlang`)
-Configures speech recognition language hints for the current chat:
-- `/setlang`: Displays the current language setting and helpful usage examples.
-- `/setlang tr en`: Sets Turkish with English code-switching support (transcribes Turkish sentences while preserving English technical/daily loan words).
-- `/setlang en es`: Sets English with Spanish code-switching support.
-- `/setlang tr`: Sets Turkish only.
-- `/setlang en`: Sets English only.
-- `/setlang auto` (or `reset`): Resets language setting to automatic detection.
-- `/setlang <chat_id> tr en`: (Admin only) Sets language for a specific chat ID.
+The bot drops messages from unauthorized chats to avoid leaking bot presence.
 
-Specifying explicit language hints prevents meaningless background noise (coughs, clicks, breathing, room noise) from being hallucinated into random foreign languages, while allowing multi-language code-switching.
+- `/allow [chat_id]`: Add current or specified chat to the allowed list (Admin only).
+- `/disallow [chat_id]`: Remove current or specified chat from the allowed list (Admin only).
+- `/chats`: List all currently allowed chat IDs (Admin only).
 
-#### Admin Commands
+### Language Configuration
 
-- `/allow`: Adds the current chat to the whitelist and persists the change to `config.json`.
-- `/allow <chat_id>`: Adds a specific chat ID to the whitelist.
-- `/disallow`: Removes the current chat from the whitelist.
-- `/disallow <chat_id>`: Removes a specific chat ID from the whitelist.
-- `/chats`: Displays the list of all currently whitelisted chat IDs.
+- `/setlang`: View current language configuration and examples.
+- `/setlang <lang1> [lang2...]`: Set language hints with code-switching support (e.g., `/setlang tr en`, `/setlang en`).
+- `/setlang auto` (or `reset`): Reset to automatic language detection.
+- `/setlang <chat_id> <lang1> [lang2...]`: Set language hints for a specific chat (Admin only).
 
-## Supported Media
+## Docker Deployment
 
-- **Voice messages**: Audio notes recorded using Telegram's microphone button.
-- **Video notes**: Round video clips recorded in Telegram.
-
-Transcripts shorter than 4,096 characters are sent as direct text replies. Transcripts exceeding 4,096 characters are delivered as an attached `transcript.txt` file reply.
-
-## Running Locally
-
-### Development Mode (auto-reload)
+Start the service using Docker Compose:
 
 ```bash
-bun run dev
+cp config.example.json config.json
+# Edit config.json
+docker compose up -d --build
 ```
 
-### Production Mode
-
+View logs:
 ```bash
-bun run start
+docker compose logs -f
 ```
 
-## Running with Docker
+Stop the service:
+```bash
+docker compose down
+```
 
-The setup uses a secure multi-stage Docker build (`oven/bun:latest`), dropping build tools in the final image and running under an unprivileged `bun` user.
+## Development
 
-### Docker Compose (Recommended)
-
-1. Ensure `config.json` is configured:
-   ```bash
-   cp config.example.json config.json
-   ```
-
-2. Start the container in detached mode:
-   ```bash
-   docker compose up -d --build
-   ```
-
-3. View logs:
-   ```bash
-   docker compose logs -f
-   ```
-
-4. Stop the container:
-   ```bash
-   docker compose down
-   ```
-
-### Standalone Docker
-
-1. Build the image:
-   ```bash
-   docker build -t telegram-s2t-bot .
-   ```
-
-2. Run the container:
-   ```bash
-   docker run -d \
-     --name telegram-s2t-bot \
-     --restart unless-stopped \
-     -v $(pwd)/config.json:/app/config.json \
-     telegram-s2t-bot
-   ```
-
-## Scripts
-
-- `bun run check`: Lint and format code using Biome.
-- `bun run format`: Format code using Biome.
-- `bun run lint`: Run Biome linter.
-- `bun run typecheck`: Run TypeScript compiler checks without emitting files.
-- `bun run test`: Run the test suite.
+- `bun run typecheck`: Run TypeScript compiler check.
+- `bun run check`: Run Biome linter and formatter checks.
+- `bun run format`: Format codebase with Biome.
+- `bun run test`: Run test suite.

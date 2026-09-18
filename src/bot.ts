@@ -1,4 +1,5 @@
 import { Bot } from "grammy";
+import { handleActionCallback } from "./handlers/actions.js";
 import { handleAllow, handleChats, handleDisallow } from "./handlers/admin.js";
 import { handleSetLang } from "./handlers/language.js";
 import { handleVoiceMessage } from "./handlers/voice.js";
@@ -19,7 +20,12 @@ export function createBot(config: BotConfig): Bot {
   bot.command("chats", handleChats);
   bot.command("setlang", handleSetLang);
 
-  bot.on(["message:voice", "message:video_note"], handleVoiceMessage);
+  bot.callbackQuery(/^action:(summary|actions)$/, handleActionCallback);
+
+  bot.on(
+    ["message:voice", "message:video_note", "message:audio", "message:document"],
+    handleVoiceMessage,
+  );
 
   return bot;
 }

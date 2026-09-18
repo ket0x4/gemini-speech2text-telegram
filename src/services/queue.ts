@@ -1,4 +1,4 @@
-export function extractRetryDelayMs(error: unknown): number | null {
+function extractRetryDelayMs(error: unknown): number | null {
   if (!error) {
     return null;
   }
@@ -37,7 +37,7 @@ export function extractRetryDelayMs(error: unknown): number | null {
   return null;
 }
 
-export class TaskQueue {
+class TaskQueue {
   private queue: Array<() => Promise<void>> = [];
   private isProcessing = false;
 

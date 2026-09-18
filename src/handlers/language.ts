@@ -2,15 +2,7 @@ import type { Context } from "grammy";
 import { getConfig, saveConfig } from "../config.js";
 import { escapeHtml } from "../services/gemini.js";
 import { formatLanguagesDisplay, parseLanguageInput } from "../services/languages.js";
-
-function isAuthorizedAdmin(ctx: Context): boolean {
-  const userId = ctx.from?.id;
-  if (!userId) {
-    return false;
-  }
-  const config = getConfig();
-  return config.admin_user_ids.includes(userId);
-}
+import { isAuthorizedAdmin } from "./admin.js";
 
 export async function handleSetLang(ctx: Context): Promise<void> {
   if (!ctx.chat) {

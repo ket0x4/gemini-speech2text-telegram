@@ -2,13 +2,13 @@
  * Gemini 3.5 Transcribe supported languages and BCP-47 normalization.
  */
 
-export interface ParsedLanguages {
+interface ParsedLanguages {
   isReset: boolean;
   validCodes: string[];
   invalidTokens: string[];
 }
 
-export const LANGUAGE_DISPLAY_NAMES: Record<string, string> = {
+const LANGUAGE_DISPLAY_NAMES: Record<string, string> = {
   "tr-TR": "Türkçe",
   "en-US": "İngilizce (ABD)",
   "en-GB": "İngilizce (Birleşik Krallık)",
@@ -423,7 +423,7 @@ const LANGUAGE_ALIASES: Record<string, string> = {
 /**
  * Resolves a single token/alias into a standard BCP-47 language tag.
  */
-export function resolveLanguageCode(rawToken: string): string | null {
+function resolveLanguageCode(rawToken: string): string | null {
   const normalized = rawToken.trim().toLowerCase();
   if (!normalized) {
     return null;
